@@ -1,0 +1,28 @@
+{
+  "users": {
+    "7918080983": {
+      "name": "Edidiong Mfon",
+      "username": "templareddy",
+      "matric_no": "24CD036546",
+      "email": "emfon.2402815@stu.cu.edu.ng",
+      "is_verified": true
+    }
+  },
+  "rides": {
+    "DOT-97DA2AB5": {
+      "ride_id": "DOT-97DA2AB5",
+      "user_id": 7918080983,
+      "pickup": "Dorcas Hall",
+      "dropoff": "CLDS",
+      "passengers": 4,
+      "base_fare": 600,
+      "discount": 0.0,
+      "final_fare": 600.0,
+      "promo_code": null,
+      "is_rush": true,
+      "status": "completed",
+      "payment_status": "pending",
+      "created_at": "2026-11-17 09:33:33"
+    }
+  }
+}
