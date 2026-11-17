@@ -21,7 +21,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, BotCommand
 
 import config
 import keyboards as kb
@@ -463,6 +463,12 @@ async def on_confirm_dispatch(callback: CallbackQuery, state: FSMContext):
 async def on_cancel_booking(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text("❌ Shuttle booking request was cancelled.")
+    user_data = storage.get_user(callback.from_user.id)
+    is_reg = bool(user_data and user_data.get("is_verified"))
+    await callback.message.answer(
+        "👇 Use the menu below to book another ride or explore options.",
+        reply_markup=kb.get_main_menu_keyboard(is_registered=is_reg)
+    )
     await callback.answer()
 
 # ----------------- Promo / Discount Application (FR-37 to FR-40) -----------------
@@ -530,8 +536,14 @@ async def on_cancel_ride(callback: CallbackQuery):
     ride_id = callback.data.split(":", 1)[1]
     storage.update_ride_status(ride_id, "cancelled")
     await callback.message.edit_text(
-        f"🚫 **Booking {ride_id} has been cancelled.**\n\nNeed another ride? Use the menu below.",
+        f"🚫 **Booking {ride_id} has been cancelled.**",
         parse_mode=ParseMode.MARKDOWN
+    )
+    user_data = storage.get_user(callback.from_user.id)
+    is_reg = bool(user_data and user_data.get("is_verified"))
+    await callback.message.answer(
+        "Need another ride? Use the menu below.",
+        reply_markup=kb.get_main_menu_keyboard(is_registered=is_reg)
     )
     await callback.answer("Ride cancelled.")
 
@@ -543,7 +555,14 @@ async def on_complete_ride(callback: CallbackQuery):
         f"🏁 **Booking {ride_id} marked as completed!**\n\nThank you for riding with us!",
         parse_mode=ParseMode.MARKDOWN
     )
+    user_data = storage.get_user(callback.from_user.id)
+    is_reg = bool(user_data and user_data.get("is_verified"))
+    await callback.message.answer(
+        "🎉 Ride complete! What would you like to do next?",
+        reply_markup=kb.get_main_menu_keyboard(is_registered=is_reg)
+    )
     await callback.answer("Ride completed!")
+
 
 # ----------------- Campus Locations & Info -----------------
 
@@ -556,7 +575,7 @@ async def show_campus_info(message: Message):
         f"📍 **Approved Campus Routes & Fare Rules**\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"🏢 **Student Halls:**\n"
-        f"Peter, Paul, John, Joseph, Daniel, Esther, Mary, Lydia, Dorcas, Deborah\n\n"
+        f"Peter, Paul, John, Joseph, Daniel, Joshua, Mary, Lydia, Dorcas, Deborah\n\n"
         f"🏛 **Approved Campus Destinations (FR-14):**\n"
         f"• LT1 / LT2 Lecture Theatres\n"
         f"• CMSS & CEDS Buildings\n"
@@ -590,6 +609,15 @@ async def main():
         sys.exit(1)
 
     bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+
+    # Register slash commands so they appear when users type "/" in Telegram
+    await bot.set_my_commands([
+        BotCommand(command="start",    description="🏠 Open main menu / restart the bot"),
+        BotCommand(command="promo",    description="🏷️ Apply a promo/discount code"),
+        BotCommand(command="setmatric",description="🎓 Update your matriculation number"),
+        BotCommand(command="setemail", description="📧 Update your university email"),
+    ])
+
     print("🚀 Covenant University Shuttle Bot is running and polling updates...")
     await dp.start_polling(bot)
 

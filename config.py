@@ -19,7 +19,7 @@ HALLS = [
     "John Hall",
     "Joseph Hall",
     "Daniel Hall",
-    "Esther Hall",
+    "Joshua Hall",
     "Mary Hall",
     "Lydia Hall",
     "Dorcas Hall",
