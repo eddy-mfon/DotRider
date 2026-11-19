@@ -1704,10 +1704,30 @@ async def show_campus_info(message: Message):
     )
     await message.answer(info_text, parse_mode=ParseMode.MARKDOWN)
 
-# ----------------- Health Check Server (for Render) -----------------
+# ----------------- Health Check & Keep-Alive Server (for Render) -----------------
 
 async def health_handler(request):
-    return web.Response(text="OK")
+    return web.Response(text="OK - Bot is active")
+
+async def keep_alive_ping():
+    """Background task that pings the Render service URL every 10 minutes to prevent sleep."""
+    await asyncio.sleep(30)  # Wait 30s after startup before first ping
+    service_url = os.environ.get("RENDER_EXTERNAL_URL") or os.environ.get("SERVICE_URL")
+    if not service_url:
+        logger.info("Keep-alive: No RENDER_EXTERNAL_URL or SERVICE_URL configured. Self-ping skipped.")
+        return
+
+    logger.info(f"Keep-alive task started for: {service_url}")
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                target_url = service_url.rstrip("/") + "/health"
+                async with session.get(target_url, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                    logger.info(f"Self-ping keep-alive status: {resp.status}")
+        except Exception as e:
+            logger.warning(f"Self-ping keep-alive failed: {e}")
+        # Ping every 10 minutes (Render free tier sleeps after 15 mins of inactivity)
+        await asyncio.sleep(600)
 
 async def start_health_server():
     """Lightweight HTTP server so Render Web Service stays alive."""
@@ -1720,6 +1740,9 @@ async def start_health_server():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     logger.info(f"Health check server running on port {port}")
+
+    # Launch background keep-alive self-ping loop
+    asyncio.create_task(keep_alive_ping())
 
 # ----------------- Main Runner -----------------
 
