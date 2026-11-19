@@ -8,7 +8,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton
 )
-from config import HALLS, DESTINATIONS
+from config import CAMPUS_LOCATIONS
 
 # ----------------- Role Selection Gateway -----------------
 
@@ -39,39 +39,26 @@ def get_privacy_notice_keyboard() -> InlineKeyboardMarkup:
 # ----------------- Student Keyboards -----------------
 
 def get_main_menu_keyboard(is_registered: bool = False) -> ReplyKeyboardMarkup:
+    """Simplified student menu: only 'Book a Ride' and 'Previous / Active Rides'"""
     if not is_registered:
         keyboard = [
-            [
-                KeyboardButton(text="📝 Register / Sign Up"),
-                KeyboardButton(text="ℹ️ Campus Locations & Fare")
-            ],
-            [
-                KeyboardButton(text="👤 My Student Profile"),
-                KeyboardButton(text="📞 Support / Help")
-            ]
+            [KeyboardButton(text="📝 Register / Sign Up")]
         ]
     else:
         keyboard = [
-            [
-                KeyboardButton(text="🚖 Book a Shuttle"),
-                KeyboardButton(text="🔄 Return Trip (Back to Hall)")
-            ],
-            [
-                KeyboardButton(text="📋 Active Rides / Status"),
-                KeyboardButton(text="🏷️ Apply Promo / Discount")
-            ],
-            [
-                KeyboardButton(text="👤 My Student Profile"),
-                KeyboardButton(text="ℹ️ Campus Locations & Fare")
-            ]
+            [KeyboardButton(text="🚖 Book a Ride")],
+            [KeyboardButton(text="📋 Previous / Active Rides")]
         ]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True, is_persistent=True)
 
-def get_halls_keyboard(action_prefix: str = "hall") -> InlineKeyboardMarkup:
+def get_campus_locations_keyboard(action_prefix: str = "loc", exclude: str = None) -> InlineKeyboardMarkup:
+    """Displays the 6 approved campus points in clean 2-column inline buttons."""
     buttons = []
     row = []
-    for hall in HALLS:
-        row.append(InlineKeyboardButton(text=f"🏢 {hall}", callback_data=f"{action_prefix}:{hall}"))
+    for loc in CAMPUS_LOCATIONS:
+        if exclude and loc == exclude:
+            continue
+        row.append(InlineKeyboardButton(text=f"📍 {loc}", callback_data=f"{action_prefix}:{loc}"))
         if len(row) == 2:
             buttons.append(row)
             row = []
@@ -80,19 +67,11 @@ def get_halls_keyboard(action_prefix: str = "hall") -> InlineKeyboardMarkup:
     buttons.append([InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_booking")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def get_destinations_keyboard(action_prefix: str = "dest") -> InlineKeyboardMarkup:
-    buttons = []
-    row = []
-    for dest in DESTINATIONS:
-        label = dest.split("(")[0].strip()
-        row.append(InlineKeyboardButton(text=f"📍 {label}", callback_data=f"{action_prefix}:{dest}"))
-        if len(row) == 2:
-            buttons.append(row)
-            row = []
-    if row:
-        buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="❌ Cancel", callback_data="cancel_booking")])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+def get_halls_keyboard(action_prefix: str = "pickup") -> InlineKeyboardMarkup:
+    return get_campus_locations_keyboard(action_prefix=action_prefix)
+
+def get_destinations_keyboard(action_prefix: str = "dropoff", exclude: str = None) -> InlineKeyboardMarkup:
+    return get_campus_locations_keyboard(action_prefix=action_prefix, exclude=exclude)
 
 def get_passengers_keyboard() -> InlineKeyboardMarkup:
     """FR-20: Supports 1 to 4 passengers"""

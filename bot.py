@@ -17,8 +17,10 @@ Complies with SRS requirements and telegram bot specifications:
 """
 import asyncio
 import logging
+import os
 import sys
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -43,8 +45,8 @@ class RegistrationFlow(StatesGroup):
     entering_email = State()
 
 class BookingFlow(StatesGroup):
-    choosing_hall = State()
-    choosing_destination = State()
+    choosing_pickup = State()
+    choosing_dropoff = State()
     choosing_passengers = State()
     confirming = State()
 
@@ -178,10 +180,10 @@ async def cmd_start(message: Message, state: FSMContext):
         welcome_text = (
             f"👋 **Welcome back, {user_name}!**\n"
             f"━━━━━━━━━━━━━━━━━━\n"
-            f"🎓 *Covenant University Campus Shuttle Dispatch*\n\n"
-            f"Order rides between your Hall of Residence and Lecture halls, "
-            f"CUCRID, Caf 2, CMSS, CEDS, CST, PET, Banks, and Engineering departments.\n\n"
-            f"Choose an option below to get started:"
+            f"🎓 *dot.rider — Campus Shuttle Dispatch*\n\n"
+            f"Order rides between any campus pickup points including Chapel Shuttle Stand, Lecture Theatres, CST Building, CMSS Building, CEDS, CUCRID, Caf 2, and more.\n"
+            f"💵 Flat Fare: **₦200** per passenger.\n\n"
+            f"Tap **🚖 Book a Ride** below to get started:"
         )
 
     await message.answer(
@@ -294,12 +296,12 @@ async def cmd_mock_request(message: Message):
     # Create mock ride
     mock_ride = storage.create_ride(
         user_id=999999, # Mock student ID
-        pickup="Peter Hall",
+        pickup="Chapel Shuttle Stand",
         dropoff="CMSS Building",
         passengers=2,
-        base_fare=200,
+        base_fare=400,
         discount=0,
-        final_fare=200,
+        final_fare=400,
         is_rush=False
     )
     # Ensure easy PIN for testing
@@ -1217,36 +1219,6 @@ async def cmd_manual_dispatch(message: Message):
             reply_markup=kb.get_ride_action_keyboard(ride_id)
         )
 
-    # Alert driver
-    card = (
-        f"🚨 **ADMIN MANUAL DISPATCH ASSIGNMENT!**\n"
-        f"🆔 Ref: `{ride_id}`\n"
-        f"📍 Pickup: {ride['pickup']} ({ride['pickup_landmark']})\n"
-        f"🏁 Drop-off: {ride['dropoff']} ({ride['dropoff_landmark']})\n"
-        f"👥 Passengers: {ride['passengers']}\n"
-        f"💵 Payout: ₦{ride['driver_payout']:,.0f}"
-    )
-    await send_and_log(
-        chat_id=driver_id,
-        text=card,
-        event="admin_manual_dispatch",
-        reply_markup=kb.get_driver_trip_keyboard(ride_id, "confirmed")
-    )
-
-    # Alert student
-    student_id = ride.get("user_id")
-    if student_id:
-        await send_and_log(
-            chat_id=student_id,
-            text=(
-                f"🎉 **Driver Manually Assigned by Dispatch!**\n"
-                f"Driver: {dp_prof.get('full_name')} ({dp_prof.get('car_model')}, `{dp_prof.get('plate_number')}`).\n"
-                f"Meeting Point: **{ride['pickup_landmark']}**\n"
-                f"Completion PIN: `{ride['completion_otp']}`"
-            ),
-            event="manual_driver_assigned",
-            reply_markup=kb.get_ride_action_keyboard(ride_id)
-        )
 
 # =========================================================================
 # STUDENT POV: REGISTRATION, BOOKING & CANCELLATION
@@ -1384,8 +1356,8 @@ async def show_profile(message: Message):
     )
     await message.answer(profile_text, parse_mode=ParseMode.MARKDOWN)
 
-@dp.message(F.text == "🚖 Book a Shuttle")
-async def start_booking_outward(message: Message, state: FSMContext):
+@dp.message(F.text.in_({"🚖 Book a Ride", "🚖 Book a Shuttle"}))
+async def start_booking_flow(message: Message, state: FSMContext):
     if check_role(message.from_user.id, "driver"):
         await message.answer("⚠️ Drivers cannot book rides. Roles are mutually exclusive.")
         return
@@ -1401,65 +1373,28 @@ async def start_booking_outward(message: Message, state: FSMContext):
         return
 
     await state.clear()
-    await state.update_data(direction="hall_to_dest")
-    await state.set_state(BookingFlow.choosing_hall)
+    await state.set_state(BookingFlow.choosing_pickup)
     await message.answer(
-        "📍 **Step 1/3: Select Pickup Hall**\n\nWhere should the shuttle pick you up?",
-        reply_markup=kb.get_halls_keyboard(action_prefix="pickup_hall"),
+        "📍 **Step 1/3: Select Pickup Location**\n\nWhere are you departing from on campus?",
+        reply_markup=kb.get_campus_locations_keyboard(action_prefix="pickup_loc"),
         parse_mode=ParseMode.MARKDOWN
     )
 
-@dp.message(F.text == "🔄 Return Trip (Back to Hall)")
-async def start_booking_return(message: Message, state: FSMContext):
-    if check_role(message.from_user.id, "driver"):
-        await message.answer("⚠️ Drivers cannot book rides. Roles are mutually exclusive.")
-        return
-
-    user_data = storage.get_user(message.from_user.id)
-    if not user_data or not user_data.get("is_verified"):
-        await message.answer(
-            "🔒 **Student Verification Required**\n\n"
-            "Please click **📝 Register / Sign Up** on the menu to complete verification.",
-            reply_markup=kb.get_main_menu_keyboard(is_registered=False),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
-
-    await state.clear()
-    await state.update_data(direction="dest_to_hall")
-    await state.set_state(BookingFlow.choosing_destination)
-    await message.answer(
-        "📍 **Step 1/3: Return Trip - Campus Pickup**\n\nWhere are you waiting on campus?",
-        reply_markup=kb.get_destinations_keyboard(action_prefix="pickup_dest"),
-        parse_mode=ParseMode.MARKDOWN
-    )
-
-@dp.callback_query(F.data.startswith("pickup_hall:"))
-async def on_pickup_hall_selected(callback: CallbackQuery, state: FSMContext):
-    hall = callback.data.split(":", 1)[1]
-    await state.update_data(pickup=hall)
-    await state.set_state(BookingFlow.choosing_destination)
+@dp.callback_query(F.data.startswith("pickup_loc:") | F.data.startswith("pickup_hall:") | F.data.startswith("pickup_dest:"))
+async def on_pickup_point_selected(callback: CallbackQuery, state: FSMContext):
+    pickup = callback.data.split(":", 1)[1]
+    await state.update_data(pickup=pickup)
+    await state.set_state(BookingFlow.choosing_dropoff)
     await callback.message.edit_text(
-        f"✅ Pickup: **{hall}** ({config.get_landmark(hall)})\n\n🎯 **Step 2/3: Select Drop-off Destination**:",
-        reply_markup=kb.get_destinations_keyboard(action_prefix="dropoff_dest"),
+        f"✅ Pickup: **{pickup}** ({config.get_landmark(pickup)})\n\n"
+        f"🎯 **Step 2/3: Select Drop-off Destination**:\nWhere are you heading?",
+        reply_markup=kb.get_campus_locations_keyboard(action_prefix="dropoff_loc", exclude=pickup),
         parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer()
 
-@dp.callback_query(F.data.startswith("pickup_dest:"))
-async def on_pickup_dest_selected(callback: CallbackQuery, state: FSMContext):
-    dest = callback.data.split(":", 1)[1]
-    await state.update_data(pickup=dest)
-    await state.set_state(BookingFlow.choosing_hall)
-    await callback.message.edit_text(
-        f"✅ Pickup: **{dest}** ({config.get_landmark(dest)})\n\n🏠 **Step 2/3: Select Return Hall**:",
-        reply_markup=kb.get_halls_keyboard(action_prefix="dropoff_hall"),
-        parse_mode=ParseMode.MARKDOWN
-    )
-    await callback.answer()
-
-@dp.callback_query(F.data.startswith("dropoff_dest:") | F.data.startswith("dropoff_hall:"))
-async def on_dropoff_selected(callback: CallbackQuery, state: FSMContext):
+@dp.callback_query(F.data.startswith("dropoff_loc:") | F.data.startswith("dropoff_dest:") | F.data.startswith("dropoff_hall:"))
+async def on_dropoff_point_selected(callback: CallbackQuery, state: FSMContext):
     dropoff = callback.data.split(":", 1)[1]
     data = await state.get_data()
     pickup = data.get("pickup", "")
@@ -1471,7 +1406,9 @@ async def on_dropoff_selected(callback: CallbackQuery, state: FSMContext):
     await state.update_data(dropoff=dropoff)
     await state.set_state(BookingFlow.choosing_passengers)
     await callback.message.edit_text(
-        f"Route: **{pickup}** ➡️ **{dropoff}**\n\n👥 **Step 3/3: Number of Passengers** (1 to 4):",
+        f"Route: **{pickup}** ➡️ **{dropoff}**\n\n"
+        f"👥 **Step 3/3: Number of Passengers** (1 to 4):\n"
+        f"💵 Fare: **₦200** per person",
         reply_markup=kb.get_passengers_keyboard(),
         parse_mode=ParseMode.MARKDOWN
     )
@@ -1488,46 +1425,27 @@ async def on_passengers_selected(callback: CallbackQuery, state: FSMContext):
     pickup = data.get("pickup")
     dropoff = data.get("dropoff")
 
-    is_rush = config.is_rush_hour()
-    rate = config.RUSH_FARE if is_rush else config.BASE_FARE
-    base_fare = rate * count
-
-    user_data = storage.get_user(callback.from_user.id) or {}
-    active_promo = user_data.get("active_promo")
-    discount = 0.0
-
-    if active_promo and active_promo in config.DISCOUNT_CODES:
-        pinfo = config.DISCOUNT_CODES[active_promo]
-        if pinfo["type"] == "percentage":
-            discount = base_fare * (pinfo["value"] / 100.0)
-        else:
-            discount = min(base_fare, float(pinfo["value"]))
-
-    final_fare = max(0.0, base_fare - discount)
+    # Flat fare rule: ₦200 per passenger
+    base_fare = 200.0 * count
+    final_fare = base_fare
 
     await state.update_data(
         base_fare=base_fare,
-        discount=discount,
+        discount=0.0,
         final_fare=final_fare,
-        promo_code=active_promo,
-        is_rush=is_rush
+        promo_code=None,
+        is_rush=False
     )
 
-    rush_badge = "⚡ **RUSH HOUR ACTIVE** (7:50 - 10:30 AM)\n" if is_rush else ""
-    discount_line = f"🏷️ **Discount ({active_promo}):** -₦{discount:,.0f}\n" if discount > 0 else ""
-
     summary_text = (
-        f"📝 **Trip Summary & Checkout (FR-22, FR-36)**\n"
+        f"📝 **Trip Summary & Checkout**\n"
         f"━━━━━━━━━━━━━━━━━━\n"
-        f"{rush_badge}"
         f"📍 **Pickup:** {pickup} ({config.get_landmark(pickup)})\n"
         f"🏁 **Drop-off:** {dropoff} ({config.get_landmark(dropoff)})\n"
         f"👥 **Passengers:** {count} passenger(s)\n"
-        f"💵 **Base Fare:** ₦{base_fare:,.0f}\n"
-        f"{discount_line}"
-        f"💳 **Total Payable:** **₦{final_fare:,.0f}**\n"
+        f"💵 **Total Fare (₦200/seat):** **₦{final_fare:,.0f}**\n"
         f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"Ready to dispatch shuttle request?"
+        f"Dispatch ride request to available drivers?"
     )
     await state.set_state(BookingFlow.confirming)
     await callback.message.edit_text(summary_text, reply_markup=kb.get_confirm_keyboard(), parse_mode=ParseMode.MARKDOWN)
@@ -1622,47 +1540,63 @@ async def on_cancel_booking(callback: CallbackQuery, state: FSMContext):
     )
     await callback.answer()
 
-@dp.message(F.text == "📋 Active Rides / Status")
+@dp.message(F.text.in_({"📋 Previous / Active Rides", "📋 Active Rides / Status"}))
 async def show_active_rides(message: Message):
     if check_role(message.from_user.id, "driver"):
         await message.answer("⚠️ Drivers view active rides via '📋 Current Active Trip'.")
         return
 
-    rides = storage.get_user_rides(message.from_user.id, active_only=True)
-    if not rides:
+    active_rides = storage.get_user_rides(message.from_user.id, active_only=True)
+    all_rides = storage.get_user_rides(message.from_user.id, active_only=False)
+
+    if not all_rides:
         user_data = storage.get_user(message.from_user.id)
         is_reg = bool(user_data and user_data.get("is_verified"))
         await message.answer(
-            "ℹ️ You do not have any active shuttle bookings right now.",
+            "ℹ️ You do not have any rides on record yet.\n\nUse '🚖 Book a Ride' to request one!",
             reply_markup=kb.get_main_menu_keyboard(is_registered=is_reg)
         )
         return
 
-    for r in rides:
-        driver_str = "Searching for driver..."
-        if r.get("driver_id"):
-            dp = storage.get_driver_profile(r["driver_id"])
-            if dp:
-                driver_str = f"{dp.get('full_name')} ({dp.get('car_model')}, `{dp.get('plate_number')}`)"
+    # 1. Active Rides
+    if active_rides:
+        for r in active_rides:
+            driver_str = "Searching for driver..."
+            if r.get("driver_id"):
+                dp = storage.get_driver_profile(r["driver_id"])
+                if dp:
+                    driver_str = f"{dp.get('full_name')} ({dp.get('car_model')}, `{dp.get('plate_number')}`)"
 
-        card = (
-            f"🚖 **Booking `{r['ride_id']}`**\n"
-            f"━━━━━━━━━━━━━━━━━━\n"
-            f"📍 **Pickup:** {r['pickup']} ({r.get('pickup_landmark', '')})\n"
-            f"🏁 **Drop-off:** {r['dropoff']} ({r.get('dropoff_landmark', '')})\n"
-            f"👥 **Passengers:** {r.get('passengers', 1)}\n"
-            f"💵 **Fare:** ₦{r['final_fare']:,.0f}\n"
-            f"🔑 **Completion PIN:** `{r.get('completion_otp')}`\n"
-            f"👨‍✈️ **Driver:** {driver_str}\n"
-            f"📊 **Status:** 🟢 {r['status'].replace('_', ' ').title()}\n"
-            f"🕒 **Time:** {r['created_at']}\n"
-            f"━━━━━━━━━━━━━━━━━━"
-        )
-        await message.answer(
-            card,
-            reply_markup=kb.get_ride_action_keyboard(r['ride_id']),
-            parse_mode=ParseMode.MARKDOWN
-        )
+            card = (
+                f"🚖 **ACTIVE RIDE — `{r['ride_id']}`**\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"📍 **Pickup:** {r['pickup']}\n"
+                f"🏁 **Drop-off:** {r['dropoff']}\n"
+                f"👥 **Passengers:** {r.get('passengers', 1)}\n"
+                f"💵 **Fare (₦200/seat):** ₦{r['final_fare']:,.0f}\n"
+                f"🔑 **Completion PIN:** `{r.get('completion_otp')}`\n"
+                f"👨‍✈️ **Driver:** {driver_str}\n"
+                f"📊 **Status:** 🟢 {r['status'].replace('_', ' ').title()}\n"
+                f"🕒 **Time:** {r['created_at']}\n"
+                f"━━━━━━━━━━━━━━━━━━"
+            )
+            await message.answer(
+                card,
+                reply_markup=kb.get_ride_action_keyboard(r['ride_id']),
+                parse_mode=ParseMode.MARKDOWN
+            )
+
+    # 2. Previous Rides
+    completed_or_past = [r for r in all_rides if r.get("status") in ["completed", "cancelled"]]
+    if completed_or_past:
+        history_text = "📋 **Your Previous Rides:**\n━━━━━━━━━━━━━━━━━━\n"
+        for r in completed_or_past[:5]:
+            status_badge = "🏁 Completed" if r.get("status") == "completed" else "🚫 Cancelled"
+            history_text += (
+                f"• `{r['ride_id']}`: {r['pickup']} ➡️ {r['dropoff']} "
+                f"({status_badge}, ₦{r.get('final_fare', 0):,.0f}) — _{r['created_at']}_\n"
+            )
+        await message.answer(history_text, parse_mode=ParseMode.MARKDOWN)
 
 @dp.callback_query(F.data.startswith("cancel_ride:"))
 async def on_student_cancel_ride(callback: CallbackQuery):
@@ -1747,27 +1681,45 @@ async def show_support(message: Message):
 
 @dp.message(F.text == "ℹ️ Campus Locations & Fare")
 async def show_campus_info(message: Message):
-    is_rush = config.is_rush_hour()
-    rush_status = "⚡ **Active Now (₦150/seat)**" if is_rush else "⚪ Inactive (Normal rate ₦100/seat)"
     info_text = (
-        f"📍 **Approved Campus Routes & Fare Rules**\n"
+        f"📍 **Approved Campus Pickup & Drop-off Points**\n"
         f"━━━━━━━━━━━━━━━━━━\n"
-        f"🏢 **Student Halls:**\n"
-        f"Peter, Paul, John, Joseph, Daniel, Joshua, Mary, Lydia, Dorcas, Deborah\n\n"
-        f"🏛 **Approved Campus Destinations (FR-14 & FR-18):**\n"
-        f"• LT1 / LT2 Lecture Theatres (Walkway Canopy)\n"
-        f"• CMSS & CEDS Buildings\n"
-        f"• CST & CUCRID Centers\n"
-        f"• Cafeteria 2 (Caf 2 Plaza)\n"
-        f"• PET Car Park, Zenith Bank & Access Bank\n"
-        f"• ICT Centre & Guest House\n\n"
-        f"💵 **Fare Rates (FR-21):**\n"
-        f"• Standard Rate: **₦100** / seat\n"
-        f"• Rush Hour (7:50 - 10:30 AM): **₦150** / seat\n"
-        f"• Current Status: {rush_status}\n\n"
-        f"⚠️ Note: Areas directly in front of Engineering buildings remain disabled per university pilot guidelines."
+        f"🏛 **Available Locations:**\n"
+        f"• Chapel Shuttle Stand\n"
+        f"• Lecture Theatres\n"
+        f"• CMSS Building\n"
+        f"• CEDS\n"
+        f"• CST Building\n"
+        f"• CUCRID\n"
+        f"• Caf 2\n"
+        f"• PET Car Park\n"
+        f"• Zenith Bank\n"
+        f"• Access Bank\n"
+        f"• ICT Centre\n"
+        f"• Guest House\n"
+        f"• Civil / Mech / EIE\n\n"
+        f"💵 **Fare Rate:**\n"
+        f"• Flat Rate: **₦200** / passenger\n\n"
+        f"You can ride from any of these points to any other point."
     )
     await message.answer(info_text, parse_mode=ParseMode.MARKDOWN)
+
+# ----------------- Health Check Server (for Render) -----------------
+
+async def health_handler(request):
+    return web.Response(text="OK")
+
+async def start_health_server():
+    """Lightweight HTTP server so Render Web Service stays alive."""
+    app = web.Application()
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+    port = int(os.environ.get("PORT", 10000))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"Health check server running on port {port}")
 
 # ----------------- Main Runner -----------------
 
@@ -1789,6 +1741,9 @@ async def main():
         BotCommand(command="admin_approve", description="🛡️ Approve driver (Admin)"),
         BotCommand(command="manual_dispatch", description="🛡️ Manually dispatch ride (Admin)"),
     ])
+
+    # Start health check server for Render
+    await start_health_server()
 
     print("🚀 Covenant University Shuttle Bot is running (Full Student & Driver POV active)...")
     await dp.start_polling(bot_instance)

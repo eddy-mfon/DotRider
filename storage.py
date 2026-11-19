@@ -365,8 +365,8 @@ class Storage:
         promo_code: str = None,
         is_rush: bool = False
     ):
-        ride_id = str(uuid.uuid4())[:8].upper()
-        full_ref = f"DOT-{ride_id}"
+        # Booking reference reduced to 6 characters
+        full_ref = str(uuid.uuid4())[:6].upper()
         # FR-31: 4-digit completion verification PIN
         completion_otp = f"{random.randint(1000, 9999)}"
         driver_payout = config.calculate_driver_payout(final_fare)
