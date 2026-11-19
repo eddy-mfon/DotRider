@@ -243,7 +243,9 @@ async def on_role_selected(callback: CallbackQuery, state: FSMContext):
         )
     await callback.answer()
 
-@dp.message(Command("mock_driver", "mockdriver", "mock") | F.text.startswith("/mock driver") | F.text.startswith("/mock_driver"))
+@dp.message(Command("mock_driver", "mockdriver", "mock"))
+@dp.message(F.text.startswith("/mock driver"))
+@dp.message(F.text.startswith("/mock_driver"))
 async def cmd_mock_driver(message: Message):
     """Instantly switches current user to an approved, online mock driver."""
     user = message.from_user
@@ -260,7 +262,9 @@ async def cmd_mock_driver(message: Message):
         parse_mode=ParseMode.MARKDOWN
     )
 
-@dp.message(Command("reset_role", "resetrole", "reset") | F.text.startswith("/reset role") | F.text.startswith("/reset_role"))
+@dp.message(Command("reset_role", "resetrole", "reset"))
+@dp.message(F.text.startswith("/reset role"))
+@dp.message(F.text.startswith("/reset_role"))
 async def cmd_reset_role(message: Message, state: FSMContext):
     """Allows testers to reset role between student and driver."""
     await state.clear()
@@ -272,7 +276,10 @@ async def cmd_reset_role(message: Message, state: FSMContext):
         parse_mode=ParseMode.MARKDOWN
     )
 
-@dp.message((F.text == "🧪 Test Ride Request") | Command("mock_request", "mockrequest") | F.text.startswith("/mock request") | F.text.startswith("/mock_request"))
+@dp.message(Command("mock_request", "mockrequest"))
+@dp.message(F.text == "🧪 Test Ride Request")
+@dp.message(F.text.startswith("/mock request"))
+@dp.message(F.text.startswith("/mock_request"))
 async def cmd_mock_request(message: Message):
     """Simulates an incoming student ride dispatch directly to the driver."""
     if not check_role(message.from_user.id, "driver"):
@@ -1076,7 +1083,9 @@ async def on_admin_reject(callback: CallbackQuery):
     )
     await callback.answer("Driver Rejected.")
 
-@dp.message(Command("admin_approve", "approve", "adminapprove") | F.text.startswith("/admin approve") | F.text.startswith("/admin_approve"))
+@dp.message(Command("admin_approve", "approve", "adminapprove"))
+@dp.message(F.text.startswith("/admin approve"))
+@dp.message(F.text.startswith("/admin_approve"))
 async def cmd_admin_approve(message: Message):
     # Support both "/admin_approve 12345" and "/admin approve 12345"
     text = message.text.replace("/admin approve", "/admin_approve")
@@ -1122,13 +1131,11 @@ async def cmd_admin_approve(message: Message):
             parse_mode=ParseMode.MARKDOWN
         )
 
-@dp.message(
-    Command("manual_dispatch", "manualdispatch", "dispatch", "manuel_dispatch", "manueldispatch")
-    | F.text.startswith("/manual dispatch")
-    | F.text.startswith("/manuel disptach")
-    | F.text.startswith("/manuel dispatch")
-    | F.text.startswith("/manual_dispatch")
-)
+@dp.message(Command("manual_dispatch", "manualdispatch", "dispatch", "manuel_dispatch", "manueldispatch"))
+@dp.message(F.text.startswith("/manual dispatch"))
+@dp.message(F.text.startswith("/manuel disptach"))
+@dp.message(F.text.startswith("/manuel dispatch"))
+@dp.message(F.text.startswith("/manual_dispatch"))
 async def cmd_manual_dispatch(message: Message):
     """FR-50: Manual dispatch fallback by administrator"""
     raw_text = message.text
@@ -1718,7 +1725,8 @@ async def cmd_apply_promo(message: Message):
 
 # ----------------- Support & Help -----------------
 
-@dp.message(Command("help") | (F.text == "📞 Support / Help") | (F.text == "📞 Driver Support"))
+@dp.message(Command("help"))
+@dp.message(F.text.in_({"📞 Support / Help", "📞 Driver Support"}))
 async def show_support(message: Message):
     role = storage.get_user_role(message.from_user.id)
     support_text = (

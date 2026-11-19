@@ -145,6 +145,16 @@ class Storage:
         self.data["users"][uid].update(kwargs)
         self.save()
 
+    def get_all_pending_drivers(self):
+        """For Admin review (FR-10, FR-48)"""
+        pending = []
+        for uid, user in self.data.get("users", {}).items():
+            if user.get("role") == "driver":
+                dp = user.get("driver_profile", {})
+                if dp.get("status") == "pending_verification" or not dp.get("is_approved"):
+                    pending.append((int(uid), dp))
+        return pending
+
     # ----------------- Student Helpers -----------------
 
     def find_user_by_matric(self, matric_no: str, exclude_uid: int = None):
