@@ -191,18 +191,15 @@ def get_dispatch_alert_keyboard(ride_id: str) -> InlineKeyboardMarkup:
 
 def get_driver_trip_keyboard(ride_id: str, status: str) -> InlineKeyboardMarkup:
     """
-    FR-25, NFR-17: Strictly enforces valid sequential status progression.
+    Simplified Driver Trip progression:
+    1. '🚗 On the way to pickup' (when assigned)
+    2. '🏁 Ride Completed' (prompts for PIN verification)
     """
     action_buttons = []
     if status == "confirmed":
-        action_buttons.append([InlineKeyboardButton(text="🚗 En Route to Pickup", callback_data=f"d_trip_action:{ride_id}:driver_en_route")])
+        action_buttons.append([InlineKeyboardButton(text="🚗 On the way to pickup", callback_data=f"d_trip_action:{ride_id}:driver_en_route")])
     elif status == "driver_en_route":
-        action_buttons.append([InlineKeyboardButton(text="📍 Arrived at Pickup", callback_data=f"d_trip_action:{ride_id}:driver_arrived")])
-    elif status == "driver_arrived":
-        action_buttons.append([InlineKeyboardButton(text="▶️ Start Trip (Passengers Onboard)", callback_data=f"d_trip_action:{ride_id}:in_progress")])
-    elif status == "in_progress":
-        # FR-31: Completion verification step
-        action_buttons.append([InlineKeyboardButton(text="🏁 Enter Passenger PIN to Complete", callback_data=f"d_trip_prompt_otp:{ride_id}")])
+        action_buttons.append([InlineKeyboardButton(text="🏁 Ride Completed", callback_data=f"d_trip_prompt_otp:{ride_id}")])
 
     action_buttons.append([InlineKeyboardButton(text="⚠️ Cancel Ride", callback_data=f"d_trip_cancel_prompt:{ride_id}")])
     return InlineKeyboardMarkup(inline_keyboard=action_buttons)

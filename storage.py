@@ -23,10 +23,8 @@ DATA_FILE = "rides_data.json"
 
 VALID_TRANSITIONS = {
     "pending_assignment": ["confirmed", "cancelled"],
-    "confirmed": ["driver_en_route", "cancelled"],
-    "driver_en_route": ["driver_arrived", "cancelled"],
-    "driver_arrived": ["in_progress", "cancelled"],
-    "in_progress": ["completed", "cancelled"],
+    "confirmed": ["driver_en_route", "completed", "cancelled"],
+    "driver_en_route": ["completed", "cancelled"],
     "completed": [],
     "cancelled": []
 }

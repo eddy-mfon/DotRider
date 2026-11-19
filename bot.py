@@ -584,7 +584,7 @@ async def on_driver_accept(callback: CallbackQuery):
         f"👥 **Passengers:** {ride['passengers']}\n"
         f"💵 **Estimated Earnings:** **₦{ride['driver_payout']:,.0f}**\n"
         f"━━━━━━━━━━━━━━━━━━\n"
-        f"Tap **🚗 En Route to Pickup** when you head out:"
+        f"Tap **🚗 On the way to pickup** when you head out:"
     )
     await callback.message.edit_text(
         card,
@@ -680,49 +680,17 @@ async def on_driver_trip_action(callback: CallbackQuery):
 
     if new_status == "driver_en_route":
         await callback.message.edit_text(
-            f"🚗 **En Route to Pickup**\n\nHeading to **{ride['pickup']}** ({ride['pickup_landmark']}).",
+            f"🚗 **On the way to pickup**\n\nHeading to **{ride['pickup']}** ({ride['pickup_landmark']}).\n\nWhen you arrive and complete the ride, tap **Ride Completed** to enter the student's PIN.",
             reply_markup=kb.get_driver_trip_keyboard(ride_id, "driver_en_route"),
             parse_mode=ParseMode.MARKDOWN
         )
         if student_id:
             await send_and_log(
                 chat_id=student_id,
-                text=f"🚗 **Update:** Your driver ({driver_profile.get('full_name')}) is now **en route** to **{ride['pickup']}** ({ride['pickup_landmark']}).",
+                text=f"🚗 **Update:** Your driver ({driver_profile.get('full_name')}) is now **on the way to pickup** at **{ride['pickup']}** ({ride['pickup_landmark']}).",
                 event="driver_en_route"
             )
-        await callback.answer("Status: En Route")
-
-    elif new_status == "driver_arrived":
-        await callback.message.edit_text(
-            f"📍 **Arrived at Pickup ({ride['pickup']})**\n\nWaiting for student at **{ride['pickup_landmark']}**.",
-            reply_markup=kb.get_driver_trip_keyboard(ride_id, "driver_arrived"),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        if student_id:
-            await send_and_log(
-                chat_id=student_id,
-                text=(
-                    f"📍 **Update:** Your driver has **ARRIVED** at **{ride['pickup_landmark']}**!\n"
-                    f"Vehicle: **{driver_profile.get('car_model')}** (`{driver_profile.get('plate_number')}`).\n"
-                    f"Please proceed to board."
-                ),
-                event="driver_arrived"
-            )
-        await callback.answer("Status: Arrived")
-
-    elif new_status == "in_progress":
-        await callback.message.edit_text(
-            f"▶️ **Trip In Progress**\n\nDriving to **{ride['dropoff']}** ({ride['dropoff_landmark']}).",
-            reply_markup=kb.get_driver_trip_keyboard(ride_id, "in_progress"),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        if student_id:
-            await send_and_log(
-                chat_id=student_id,
-                text=f"▶️ **Update:** Trip started! On the way to **{ride['dropoff']}**. Safe travels!",
-                event="trip_started"
-            )
-        await callback.answer("Status: In Progress")
+        await callback.answer("Status: On the way to pickup")
 
 # ----------------- Ride Completion with OTP (FR-31) -----------------
 
