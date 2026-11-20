@@ -20,6 +20,7 @@ import logging
 import os
 import sys
 
+import aiohttp
 from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
