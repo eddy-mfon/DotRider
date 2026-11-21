@@ -23,13 +23,28 @@ class Database:
         self.db_path = db_path
         self.database_url = database_url
         self.is_postgres = bool(database_url and database_url.startswith(("postgres://", "postgresql://")))
+        self._pool = None
+        if self.is_postgres:
+            try:
+                import psycopg2.pool
+                import psycopg2.extras
+                self._pool = psycopg2.pool.ThreadedConnectionPool(
+                    minconn=2,
+                    maxconn=20,
+                    dsn=self.database_url,
+                    cursor_factory=psycopg2.extras.RealDictCursor
+                )
+                logger.info("Initialized PostgreSQL connection pool (2-20 connections).")
+            except Exception as e:
+                logger.error(f"Failed to initialize PostgreSQL pool: {e}")
 
     def get_connection(self):
         if self.is_postgres:
+            if self._pool:
+                return self._pool.getconn()
             import psycopg2
             import psycopg2.extras
-            conn = psycopg2.connect(self.database_url, cursor_factory=psycopg2.extras.RealDictCursor)
-            return conn
+            return psycopg2.connect(self.database_url, cursor_factory=psycopg2.extras.RealDictCursor)
         else:
             conn = sqlite3.connect(self.db_path)
             conn.row_factory = sqlite3.Row
@@ -37,6 +52,21 @@ class Database:
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA foreign_keys=ON;")
             return conn
+
+    def release_connection(self, conn):
+        if self.is_postgres and self._pool:
+            try:
+                self._pool.putconn(conn)
+            except Exception:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+        else:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
     def execute(self, query: str, params: tuple = ()) -> int:
         """Executes INSERT/UPDATE/DELETE and returns lastrowid or rowcount."""
@@ -52,7 +82,7 @@ class Database:
             cur.close()
             return last_id
         finally:
-            conn.close()
+            self.release_connection(conn)
 
     def fetchone(self, query: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         conn = self.get_connection()
@@ -65,7 +95,7 @@ class Database:
             cur.close()
             return dict(row) if row else None
         finally:
-            conn.close()
+            self.release_connection(conn)
 
     def fetchall(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
         conn = self.get_connection()
@@ -78,7 +108,7 @@ class Database:
             cur.close()
             return [dict(r) for r in rows]
         finally:
-            conn.close()
+            self.release_connection(conn)
 
     def init_schema(self):
         """Initializes tables and seeds default locations, fares, and system settings."""
@@ -288,7 +318,7 @@ class Database:
             conn.commit()
             cur.close()
         finally:
-            conn.close()
+            self.release_connection(conn)
 
         # Seed initial data
         self.seed_defaults()
