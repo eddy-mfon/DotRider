@@ -9,6 +9,9 @@ import logging
 import sqlite3
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
