@@ -1,11 +1,68 @@
 {
   "users": {
     "7918080983": {
-      "name": "Edidiong Mfon",
+      "name": "Edidiong",
       "username": "templareddy",
       "matric_no": "24CD036546",
       "email": "emfon.2402815@stu.cu.edu.ng",
-      "is_verified": true
+      "is_verified": true,
+      "role": "driver",
+      "driver_profile": {
+        "full_name": "Edidiong",
+        "phone": "08036242589",
+        "car_model": "Toyota Corolla Shuttle number 3",
+        "plate_number": "ABJ-334-12",
+        "capacity": 4,
+        "id_number": "111111",
+        "license_photo_id": "text_ref:III",
+        "vehicle_photo_id": null,
+        "reg_doc_photo_id": null,
+        "insurance_photo_id": null,
+        "license_expiry": "2027-12-31",
+        "insurance_expiry": "2027-12-31",
+        "status": "pending_verification",
+        "rejection_reason": null,
+        "suspension_reason": null,
+        "is_approved": false,
+        "is_online": false,
+        "current_ride_id": null,
+        "total_completed": 0,
+        "total_cancelled": 0,
+        "total_declined": 0,
+        "earnings_balance": 0.0,
+        "pending_payout": 0.0,
+        "payout_status": "pending",
+        "payout_disputes": [],
+        "registered_at": "2026-11-19 15:09:58"
+      }
+    },
+    "1231062272": {
+      "role": "driver",
+      "name": "Pilot Driver (\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc)",
+      "driver_profile": {
+        "full_name": "Pilot Driver (\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc\u1cbc)",
+        "phone": "08039998888",
+        "car_model": "Toyota Sienna Gold",
+        "plate_number": "ABJ-999-CU",
+        "capacity": 4,
+        "id_number": "MOCK-NIN-999",
+        "license_photo_id": "mock_photo_id",
+        "vehicle_photo_id": "mock_photo_id",
+        "license_expiry": "2028-12-31",
+        "insurance_expiry": "2028-12-31",
+        "status": "approved",
+        "is_approved": true,
+        "is_online": true,
+        "current_ride_id": null,
+        "total_completed": 3,
+        "total_cancelled": 0,
+        "total_declined": 0,
+        "earnings_balance": 1500.0,
+        "pending_payout": 1500.0,
+        "payout_status": "pending",
+        "payout_disputes": [],
+        "registered_at": "2026-11-19 16:57:34"
+      }
     }
   },
   "rides": {
@@ -23,6 +80,89 @@
       "status": "completed",
       "payment_status": "pending",
       "created_at": "2026-11-17 09:33:33"
+    },
+    "DOT-6B488092": {
+      "ride_id": "DOT-6B488092",
+      "user_id": 999999,
+      "driver_id": null,
+      "pickup": "Peter Hall",
+      "dropoff": "CMSS Building",
+      "pickup_landmark": "Peter Hall Porters' Gate / Car Park",
+      "dropoff_landmark": "CMSS Front steps & roundabout",
+      "passengers": 2,
+      "base_fare": 200,
+      "discount": 0,
+      "final_fare": 200,
+      "driver_payout": 170.0,
+      "completion_otp": "1234",
+      "promo_code": null,
+      "is_rush": false,
+      "status": "pending_assignment",
+      "declined_driver_ids": [],
+      "cancellation_reason": null,
+      "created_at": "2026-11-19 14:27:57",
+      "status_history": [
+        {
+          "status": "pending_assignment",
+          "timestamp": "2026-11-19 14:27:57"
+        }
+      ]
+    },
+    "DOT-D49AD2A2": {
+      "ride_id": "DOT-D49AD2A2",
+      "user_id": 999999,
+      "driver_id": null,
+      "pickup": "Peter Hall",
+      "dropoff": "CMSS Building",
+      "pickup_landmark": "Peter Hall Porters' Gate / Car Park",
+      "dropoff_landmark": "CMSS Front steps & roundabout",
+      "passengers": 2,
+      "base_fare": 200,
+      "discount": 0,
+      "final_fare": 200,
+      "driver_payout": 170.0,
+      "completion_otp": "1234",
+      "promo_code": null,
+      "is_rush": false,
+      "status": "pending_assignment",
+      "declined_driver_ids": [],
+      "cancellation_reason": null,
+      "created_at": "2026-11-19 14:30:01",
+      "status_history": [
+        {
+          "status": "pending_assignment",
+          "timestamp": "2026-11-19 14:30:01"
+        }
+      ]
+    },
+    "573240": {
+      "ride_id": "573240",
+      "user_id": 7918080983,
+      "driver_id": null,
+      "pickup": "Lecture Theatres",
+      "dropoff": "Access Bank",
+      "pickup_landmark": "Lecture Theatre Walkway Canopy",
+      "dropoff_landmark": "Access Bank Bus Stop",
+      "passengers": 4,
+      "base_fare": 800.0,
+      "discount": 0.0,
+      "final_fare": 800.0,
+      "driver_payout": 680.0,
+      "completion_otp": "1879",
+      "promo_code": null,
+      "is_rush": false,
+      "status": "pending_assignment",
+      "declined_driver_ids": [],
+      "cancellation_reason": null,
+      "created_at": "2026-11-19 15:08:12",
+      "status_history": [
+        {
+          "status": "pending_assignment",
+          "timestamp": "2026-11-19 15:08:12"
+        }
+      ]
     }
-  }
+  },
+  "complaints": [],
+  "notifications_log": []
 }
