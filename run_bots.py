@@ -9,6 +9,7 @@ Launches:
 import asyncio
 import logging
 import os
+import aiohttp
 from aiohttp import web
 from db import db
 from timer_worker import run_timer_worker_loop
@@ -23,6 +24,28 @@ logger = logging.getLogger("runner")
 
 async def health_check_handler(request):
     return web.Response(text="DotRider Shuttle Bots are healthy and running 24/7!", status=200)
+
+async def keep_alive_ping_loop():
+    """
+    Self-ping background task:
+    Sends an HTTP GET request to its own Render public URL every 10 minutes
+    to prevent Render free tier web service from going to sleep.
+    """
+    await asyncio.sleep(60)  # wait 1 min for server to be fully online
+    render_external_url = os.getenv("RENDER_EXTERNAL_URL", "").strip()
+    port = int(os.getenv("PORT", 10000))
+    ping_url = render_external_url if render_external_url else f"http://127.0.0.1:{port}"
+
+    logger.info(f"Keep-alive self-ping task started targeting: {ping_url}")
+    while True:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{ping_url}/health", timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                    logger.info(f"Keep-alive ping sent to {ping_url} - Status: {resp.status}")
+        except Exception as e:
+            logger.warning(f"Keep-alive self-ping warning (normal during initial startup): {e}")
+        # Ping every 10 minutes (600 seconds)
+        await asyncio.sleep(600)
 
 async def start_web_health_server():
     """Binds to PORT for Render Web Service compatibility and health checks."""
@@ -44,7 +67,10 @@ async def run_all():
     # 1. Health server to satisfy Render Web Service port checks
     tasks.append(asyncio.create_task(start_web_health_server()))
 
-    # 2. Timer Worker
+    # 2. Keep-alive self-ping loop to prevent Render sleep
+    tasks.append(asyncio.create_task(keep_alive_ping_loop()))
+
+    # 3. Timer Worker
     tasks.append(asyncio.create_task(run_timer_worker_loop()))
 
     # 3. Student Bot
