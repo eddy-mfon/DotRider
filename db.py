@@ -426,12 +426,14 @@ class Database:
         return u
 
     def update_user_profile(self, user_id: int, **kwargs):
+        allowed_cols = {"full_name", "phone", "matric_no", "email"}
         u = self.ensure_user(user_id)
         updates = []
         params = []
         for k, v in kwargs.items():
-            updates.append(f"{k} = ?")
-            params.append(v)
+            if k in allowed_cols:
+                updates.append(f"{k} = ?")
+                params.append(v)
         if updates:
             params.append(user_id)
             self.execute(f"UPDATE users SET {', '.join(updates)} WHERE user_id = ?", tuple(params))
@@ -471,24 +473,28 @@ class Database:
         return self.fetchone("SELECT * FROM drivers WHERE driver_id = ?", (driver_id,))
 
     def register_or_update_driver(self, driver_id: int, **kwargs) -> Dict[str, Any]:
+        allowed_cols = {
+            "full_name", "phone", "id_number", "car_model", "plate_number",
+            "capacity", "license_file_id", "is_approved", "is_online", "current_ride_id"
+        }
+        filtered = {k: v for k, v in kwargs.items() if k in allowed_cols}
         d = self.get_driver(driver_id)
         if not d:
-            cols = ["driver_id"] + list(kwargs.keys())
+            cols = ["driver_id"] + list(filtered.keys())
             placeholders = ["?"] * len(cols)
-            vals = [driver_id] + list(kwargs.values())
-            self.execute(
-                f"INSERT INTO drivers ({', '.join(cols)}) VALUES ({', '.join(placeholders)})",
-                tuple(vals)
-            )
+            vals = [driver_id] + list(filtered.values())
+            query = f"INSERT INTO drivers ({', '.join(cols)}) VALUES ({', '.join(placeholders)})"
+            self.execute(query, tuple(vals))
         else:
             updates = []
             params = []
-            for k, v in kwargs.items():
+            for k, v in filtered.items():
                 updates.append(f"{k} = ?")
                 params.append(v)
             if updates:
                 params.append(driver_id)
-                self.execute(f"UPDATE drivers SET {', '.join(updates)} WHERE driver_id = ?", tuple(params))
+                query = f"UPDATE drivers SET {', '.join(updates)} WHERE driver_id = ?"
+                self.execute(query, tuple(params))
         return self.get_driver(driver_id)
 
     def set_driver_online(self, driver_id: int, is_online: bool):
