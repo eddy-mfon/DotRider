@@ -76,20 +76,46 @@ async def run_all():
     # 3. Student Bot
     if config.STUDENT_BOT_TOKEN:
         s_bot = student_bot.Bot(token=config.STUDENT_BOT_TOKEN, default=student_bot.DefaultBotProperties(parse_mode=student_bot.ParseMode.HTML))
+        await s_bot.set_my_commands([
+            student_bot.BotCommand(command="start", description="Restart / Open Main Menu"),
+            student_bot.BotCommand(command="book", description="Book a Campus Shuttle"),
+            student_bot.BotCommand(command="wallet", description="View Balance & Top-Up Wallet"),
+            student_bot.BotCommand(command="ride", description="Check Current Active Ride Status"),
+            student_bot.BotCommand(command="history", description="View Past Ride History"),
+            student_bot.BotCommand(command="fares", description="Campus Locations & Fare Rates"),
+            student_bot.BotCommand(command="help", description="Dispatch Support & Contact Info")
+        ])
         tasks.append(asyncio.create_task(student_bot.dp.start_polling(s_bot)))
-        logger.info("Student Bot initialized.")
+        logger.info("Student Bot initialized with commands menu.")
 
     # 4. Driver Bot
     if config.DRIVER_BOT_TOKEN:
         d_bot = driver_bot.Bot(token=config.DRIVER_BOT_TOKEN, default=driver_bot.DefaultBotProperties(parse_mode=driver_bot.ParseMode.HTML))
+        await d_bot.set_my_commands([
+            driver_bot.BotCommand(command="start", description="Driver Dashboard / Profile"),
+            driver_bot.BotCommand(command="online", description="🟢 Go Online (Ready for Rides)"),
+            driver_bot.BotCommand(command="offline", description="🔴 Go Offline (End Duty)"),
+            driver_bot.BotCommand(command="trip", description="📋 Current Active Trip & Controls"),
+            driver_bot.BotCommand(command="profile", description="📊 My Vehicle & Star Ratings"),
+            driver_bot.BotCommand(command="help", description="ℹ️ Driver Rules & Help")
+        ])
         tasks.append(asyncio.create_task(driver_bot.dp.start_polling(d_bot)))
-        logger.info("Driver Bot initialized.")
+        logger.info("Driver Bot initialized with commands menu.")
 
     # 5. Admin Bot
     if config.ADMIN_BOT_TOKEN:
         a_bot = admin_bot.Bot(token=config.ADMIN_BOT_TOKEN, default=admin_bot.DefaultBotProperties(parse_mode=admin_bot.ParseMode.HTML))
+        await a_bot.set_my_commands([
+            admin_bot.BotCommand(command="start", description="Open Admin Dashboard"),
+            admin_bot.BotCommand(command="payments", description="⏳ View & Approve Bank Top-Ups"),
+            admin_bot.BotCommand(command="credit", description="💳 Credit Student Wallet"),
+            admin_bot.BotCommand(command="refund", description="↩️ Issue Manual Refund"),
+            admin_bot.BotCommand(command="stuck", description="⚠️ Inspect Active / Stuck Rides"),
+            admin_bot.BotCommand(command="fleet", description="🚗 View Online Drivers & Fleet"),
+            admin_bot.BotCommand(command="summary", description="📊 System Performance Summary")
+        ])
         tasks.append(asyncio.create_task(admin_bot.dp.start_polling(a_bot)))
-        logger.info("Admin Bot initialized.")
+        logger.info("Admin Bot initialized with commands menu.")
 
     logger.info("All services and health server running.")
     await asyncio.gather(*tasks)

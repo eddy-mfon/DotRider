@@ -153,6 +153,7 @@ async def reg_driver_plate(message: Message, state: FSMContext):
 # ----------------- Duty Toggle (Online/Offline) -----------------
 
 @dp.message(F.text == "🟢 Go Online (Ready for Rides)")
+@dp.message(Command("online"))
 async def driver_go_online(message: Message):
     drv_id = message.from_user.id
     driver = db.get_driver(drv_id)
@@ -170,6 +171,7 @@ async def driver_go_online(message: Message):
     )
 
 @dp.message(F.text == "🔴 Go Offline (End Duty)")
+@dp.message(Command("offline"))
 async def driver_go_offline(message: Message):
     drv_id = message.from_user.id
     active = db.get_active_driver_ride(drv_id)
@@ -568,6 +570,7 @@ async def driver_trip_cancel(call: CallbackQuery):
 # ----------------- Active Trip & Profile -----------------
 
 @dp.message(F.text == "📋 Current Active Trip")
+@dp.message(Command("trip", "active"))
 async def driver_view_active(message: Message):
     drv_id = message.from_user.id
     ride = db.get_active_driver_ride(drv_id)
@@ -620,6 +623,7 @@ async def driver_view_active(message: Message):
     )
 
 @dp.message(F.text == "📊 My Profile & Rating")
+@dp.message(Command("profile", "rating"))
 async def driver_profile_view(message: Message):
     drv_id = message.from_user.id
     d = db.get_driver(drv_id)
@@ -645,6 +649,7 @@ async def driver_profile_view(message: Message):
     )
 
 @dp.message(F.text == "ℹ️ Campus Help")
+@dp.message(Command("help", "support"))
 async def driver_help_view(message: Message):
     await message.answer(
         f"ℹ️ <b>Driver Partner Dispatch Support</b>\n\n"

@@ -170,6 +170,7 @@ async def reg_matric(message: Message, state: FSMContext):
 # ----------------- Wallet Management -----------------
 
 @dp.message(F.text == "💳 My Wallet")
+@dp.message(Command("wallet"))
 async def show_wallet(message: Message, state: FSMContext):
     await state.clear()
     uid = message.from_user.id
@@ -305,9 +306,22 @@ async def wallet_enter_ref(message: Message, state: FSMContext):
 # ----------------- Booking Flow -----------------
 
 @dp.message(F.text == "🚖 Book a Shuttle")
+@dp.message(Command("book"))
 async def start_booking(message: Message, state: FSMContext):
     await state.clear()
     uid = message.from_user.id
+    user = db.get_user(uid)
+    if not user or not user.get("full_name"):
+        db.ensure_user(uid)
+        await message.answer(
+            "👋 <b>Welcome to DotRider!</b>\n\n"
+            "Before booking your first ride, please complete your quick 1-minute registration.\n\n"
+            "Please enter your <b>Full Name</b> (e.g., Samuel Adeyemi):",
+            parse_mode=ParseMode.HTML
+        )
+        await state.set_state(StudentRegFlow.entering_name)
+        return
+
     active_ride = db.get_active_student_ride(uid)
     if active_ride:
         await message.answer(
@@ -667,6 +681,7 @@ async def booking_driver_selected(call: CallbackQuery, state: FSMContext):
 # ----------------- Active Ride & Cancellation -----------------
 
 @dp.message(F.text == "📋 My Active Ride")
+@dp.message(Command("ride", "status"))
 async def show_active_ride(message: Message):
     uid = message.from_user.id
     ride = db.get_active_student_ride(uid)
@@ -979,6 +994,7 @@ async def student_rating_skip(call: CallbackQuery, state: FSMContext):
 # ----------------- Static Info & Locations -----------------
 
 @dp.message(F.text == "ℹ️ Campus Locations & Fares")
+@dp.message(Command("fares", "locations"))
 async def info_locations(message: Message):
     locs = db.get_locations()
     text = "📍 <b>Approved Campus Locations & Zones</b>\n\n"
@@ -1009,6 +1025,7 @@ async def info_locations(message: Message):
     await message.answer(text, parse_mode=ParseMode.HTML)
 
 @dp.message(F.text == "📜 Ride History")
+@dp.message(Command("history"))
 async def ride_history(message: Message):
     uid = message.from_user.id
     rides = db.fetchall("""
@@ -1030,6 +1047,7 @@ async def ride_history(message: Message):
     await message.answer(text, parse_mode=ParseMode.HTML)
 
 @dp.message(F.text == "📞 Support & Info")
+@dp.message(Command("support", "help"))
 async def support_info(message: Message):
     await message.answer(
         f"📞 <b>Campus Shuttle Support</b>\n\n"

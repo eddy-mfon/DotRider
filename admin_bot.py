@@ -85,6 +85,7 @@ async def cmd_start(message: Message, state: FSMContext):
 # ----------------- Bank Payments Management -----------------
 
 @dp.message(F.text == "⏳ Pending Bank Payments")
+@dp.message(Command("payments", "pending"))
 async def show_pending_payments(message: Message):
     if not is_authorized(message.from_user.id):
         return
@@ -206,6 +207,7 @@ async def back_to_pay_list(call: CallbackQuery):
 # ----------------- Stuck Rides Inspector -----------------
 
 @dp.message(F.text == "⚠️ Stuck Rides Inspector")
+@dp.message(Command("stuck", "rides"))
 async def inspect_stuck_rides(message: Message):
     if not is_authorized(message.from_user.id):
         return
@@ -234,6 +236,7 @@ async def inspect_stuck_rides(message: Message):
 # ----------------- Manual Wallet Credit Flow -----------------
 
 @dp.message(F.text == "💳 Credit Student Wallet")
+@dp.message(Command("credit"))
 async def start_manual_credit(message: Message, state: FSMContext):
     if not is_authorized(message.from_user.id):
         return
@@ -311,6 +314,7 @@ async def process_credit_note(message: Message, state: FSMContext):
 # ----------------- Manual Refund Flow -----------------
 
 @dp.message(F.text == "↩️ Issue Manual Refund")
+@dp.message(Command("refund"))
 async def start_manual_refund(message: Message, state: FSMContext):
     if not is_authorized(message.from_user.id):
         return
@@ -381,6 +385,7 @@ async def process_refund_amount(message: Message, state: FSMContext):
 # ----------------- Fleet & System Summary -----------------
 
 @dp.message(F.text == "🚗 Fleet & Online Drivers")
+@dp.message(Command("fleet", "drivers"))
 async def fleet_status(message: Message):
     if not is_authorized(message.from_user.id):
         return
@@ -402,6 +407,7 @@ async def fleet_status(message: Message):
     await message.answer(text, parse_mode=ParseMode.HTML)
 
 @dp.message(F.text == "📊 System Summary")
+@dp.message(Command("summary", "stats"))
 async def system_summary(message: Message):
     if not is_authorized(message.from_user.id):
         return
