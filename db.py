@@ -28,30 +28,43 @@ class Database:
             try:
                 import psycopg2.pool
                 import psycopg2.extras
+                # Clean or add connect_timeout to DSN
+                dsn = self.database_url
+                if "connect_timeout" not in dsn:
+                    separator = "&" if "?" in dsn else "?"
+                    dsn = f"{dsn}{separator}connect_timeout=10"
                 self._pool = psycopg2.pool.ThreadedConnectionPool(
-                    minconn=2,
+                    minconn=1,
                     maxconn=20,
-                    dsn=self.database_url,
+                    dsn=dsn,
                     cursor_factory=psycopg2.extras.RealDictCursor
                 )
-                logger.info("Initialized PostgreSQL connection pool (2-20 connections).")
+                logger.info("Initialized PostgreSQL connection pool (1-20 connections).")
             except Exception as e:
-                logger.error(f"Failed to initialize PostgreSQL pool: {e}")
+                logger.error(f"Failed to initialize PostgreSQL pool: {e}. Falling back to SQLite.")
+                self.is_postgres = False
+                self._pool = None
 
     def get_connection(self):
         if self.is_postgres:
             if self._pool:
-                return self._pool.getconn()
+                try:
+                    return self._pool.getconn()
+                except Exception as e:
+                    logger.warning(f"Failed to get connection from pool ({e}), trying direct connection")
             import psycopg2
             import psycopg2.extras
-            return psycopg2.connect(self.database_url, cursor_factory=psycopg2.extras.RealDictCursor)
-        else:
-            conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row
-            # Enable WAL mode for high concurrency
-            conn.execute("PRAGMA journal_mode=WAL;")
-            conn.execute("PRAGMA foreign_keys=ON;")
-            return conn
+            try:
+                return psycopg2.connect(self.database_url, connect_timeout=10, cursor_factory=psycopg2.extras.RealDictCursor)
+            except Exception as e:
+                logger.error(f"PostgreSQL connection failed ({e}), falling back to SQLite.")
+                self.is_postgres = False
+        
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA foreign_keys=ON;")
+        return conn
 
     def release_connection(self, conn):
         if self.is_postgres and self._pool:
