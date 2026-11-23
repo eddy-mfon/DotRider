@@ -62,8 +62,10 @@ def main_admin_menu():
 
 def is_authorized(user_id: int) -> bool:
     if not config.ADMIN_CHAT_ID:
-        return True
-    return str(user_id) == str(config.ADMIN_CHAT_ID)
+        return False
+    # Supports single ID or comma/space-separated list of IDs
+    allowed_ids = [uid.strip() for uid in str(config.ADMIN_CHAT_ID).replace(" ", ",").split(",") if uid.strip()]
+    return str(user_id) in allowed_ids
 
 # ----------------- Start & Menu -----------------
 
